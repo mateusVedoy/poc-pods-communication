@@ -1,0 +1,28 @@
+# Use a imagem oficial do OpenJDK 11 como imagem base
+FROM openjdk:11
+
+# Instalar pacotes necessários para baixar e instalar o Go
+RUN apt-get update && apt-get install -y wget
+
+# Definir variáveis de ambiente para a instalação do Go
+ENV GO_VERSION=1.20
+ENV GO_URL=https://golang.org/dl/go$GO_VERSION.linux-amd64.tar.gz
+ENV GO_SHA256=9f54b8e8d2113a07f4d15c01ebc90590009b30a0b221bf0a5ab14db50920326d
+
+# Baixar e instalar o Go
+RUN set -eux; \
+    \
+    wget -O go.tgz "$GO_URL"; \
+    tar -C /usr/local -xzf go.tgz; \
+    rm go.tgz;
+
+# Adicionar o diretório bin do Go ao PATH
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# Instalar pacotes adicionais necessários
+RUN apt-get install -y git openssh-client build-essential iputils-ping
+RUN git config --global --add safe.directory '*'
+RUN go install github.com/golang/mock/mockgen@v1.6.0
+
+# Verificar a instalação do Go
+RUN go version

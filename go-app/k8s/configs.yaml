@@ -1,0 +1,33 @@
+#Indica que pod terá permissões dentro do cluster
+kind: ServiceAccount 
+apiVersion: v1
+metadata:
+  name: go-app
+  namespace: default
+---
+#Indica as configs de permissões
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: go-app
+  namespace: default
+rules:
+  - apiGroups: ["apps", "extensions", "", "autoscaling"]
+    resources: ["deployments", "pods", "horizontalpodautoscalers"]
+    # resourceNames: ["go-app"]
+    verbs: ["get", "patch", "list", "watch", "update", "delete"]
+---
+#Cria o bind entre as duas configs acima
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: go-app
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: go-app
+subjects:
+  - kind: ServiceAccount
+    name: go-app
+    namespace: default

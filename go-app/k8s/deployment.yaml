@@ -1,19 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: node-app
+  name: go-app
   namespace: default
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: node-app
+      app: go-app
   template:
     metadata:
       labels:
-        app: node-app
+        app: go-app
     spec:
+      serviceAccountName: go-app
       containers:
-      - image: node-app:v1
+      - image: go-app:v1
         imagePullPolicy: IfNotPresent
-        name: node-app
+        name: go-app
