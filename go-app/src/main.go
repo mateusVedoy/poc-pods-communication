@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -37,12 +39,90 @@ func start() {
 
 	route.Get("/go-app/health", health)
 	route.Post("/node-app/pods/delete/name/{identifier}", controller)
+	route.Post("/go-app/message/{podName}", sendMessageToPod)
 
 	panic(http.ListenAndServe(":8081", route))
 }
 
 func health(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "App up")
+}
+
+type MessageRequest struct {
+	Message string `json:"message"`
+}
+
+// Bind implements render.Binder.
+func (*MessageRequest) Bind(r *http.Request) error {
+	return nil
+}
+
+func sendMessageToPod(w http.ResponseWriter, r *http.Request) {
+
+	clienthttp := &http.Client{}
+
+	podName := chi.URLParam(r, "podName")
+	podIp, podErr := getIpFromPodByItsName("default", podName)
+
+	if podErr != nil {
+		fmt.Fprintf(w, "Error getting pod IP: %v", podErr)
+		return
+	}
+
+	url := fmt.Sprintf("http://%s:8080/node-app/", podIp)
+
+	fmt.Println(url)
+
+	message := &MessageRequest{}
+
+	if err := RenderChi.Bind(r, message); err != nil {
+		fmt.Fprintf(w, err.Error())
+		return
+	}
+
+	bytesMessage, _ := json.Marshal(message)
+
+	request, requestErr := http.NewRequest("POST", url, bytes.NewBuffer(bytesMessage))
+
+	if requestErr != nil {
+		fmt.Fprintf(w, requestErr.Error())
+		return
+	}
+
+	response, responseErr := clienthttp.Do(request)
+
+	if response != nil {
+		fmt.Print(response)
+
+		fmt.Fprintf(w, "Message propagated successfully")
+		return
+
+	}
+
+	if responseErr != nil {
+		fmt.Fprintf(w, responseErr.Error())
+		return
+	}
+
+	fmt.Fprintf(w, "Request couldn't reach recipient")
+}
+
+func getIpFromPodByItsName(namespace, podName string) (string, error) {
+
+	clientset, clientsetErr := kubeconfig()
+
+	if clientsetErr != nil {
+		return "", clientsetErr
+	}
+
+	podsClient := clientset.CoreV1().Pods(namespace)
+	pod, getErr := podsClient.Get(context.TODO(), podName, metav1.GetOptions{})
+
+	if getErr != nil {
+		return "", getErr
+	}
+
+	return pod.Status.PodIP, nil
 }
 
 func controller(w http.ResponseWriter, r *http.Request) {
