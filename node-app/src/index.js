@@ -9,12 +9,14 @@ host = os.hostname()
 
 router.post("/", (_, res) => {
 
-    res.status(200).send({ "message": "OK" })
+    console.log(`${host} received the message`)
+
+    res.status(200).send({ "message": `OK from pod ${host}` })
 })
 
 app.use(express.json())
 
-app.use("/node-app/", router)
+app.use("/node-app", router)
 
 const server = app.listen("8080", () => {
     console.log(`${host} is running on port 8080`)
@@ -26,4 +28,5 @@ process.on("SIGINT", shutdown);
 function shutdown() {
     console.log(`${host} is shutting down`)
     server.close()
+    process.exit(0)
 }
